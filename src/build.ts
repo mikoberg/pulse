@@ -4,6 +4,7 @@ import { calendarDecision } from "./signals/calendar.js";
 import { weatherDecision } from "./signals/weather.js";
 import { launchDecision } from "./signals/launch.js";
 import { renderPage } from "./render.js";
+import { position } from "./position.js";
 import type { Decision } from "./decision.js";
 
 const SIGNALS: Array<{ name: string; run: () => Promise<Decision | null> }> = [
@@ -32,7 +33,8 @@ async function main() {
     ? active.reduce((best, d) => (d.priority > best.priority ? d : best))
     : null;
 
-  const html = renderPage(chosen, new Date());
+  const now = new Date();
+  const html = renderPage(chosen, position(now), now);
 
   await mkdir("dist", { recursive: true });
   await writeFile("dist/index.html", html, "utf-8");
