@@ -54,7 +54,10 @@ export function renderPage(
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
-      max-width: 32ch;
+      max-width: min(32ch, 90vw);
+    }
+    .action, .reason, .horizon-title, .horizon-when {
+      overflow-wrap: anywhere;
     }
     .action {
       font-size: clamp(1.5rem, 6vw, 2.1rem);
@@ -104,7 +107,9 @@ export function renderPage(
       margin-top: 3rem;
       display: flex;
       flex-direction: column;
+      align-items: center;
       gap: 1.3rem;
+      max-width: min(32ch, 90vw);
       animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
     }
     .horizon-item {
