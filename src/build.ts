@@ -1,4 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
+import { resolve } from "node:path";
 import { githubDecision } from "./signals/github.js";
 import { calendarDecision } from "./signals/calendar.js";
 import { weatherDecision } from "./signals/weather.js";
@@ -18,7 +20,15 @@ const SIGNALS: Array<{ name: string; run: () => Promise<Decision | null> }> = [
 
 // A high-urgency decision (a broken build, a departure countdown) gets the
 // whole page. Horizon only appears when there's room for it to not compete.
-const HIGH_URGENCY_THRESHOLD = 70;
+export const HIGH_URGENCY_THRESHOLD = 70;
+
+export function chooseDecision(active: Decision[]): Decision | null {
+  return active.length > 0 ? active.reduce((best, d) => (d.priority > best.priority ? d : best)) : null;
+}
+
+export function shouldShowHorizon(chosen: Decision | null): boolean {
+  return !chosen || chosen.priority < HIGH_URGENCY_THRESHOLD;
+}
 
 async function safely<T>(name: string, run: () => Promise<T | null>): Promise<T | null> {
   try {
@@ -34,10 +44,10 @@ async function main() {
 
   const results = await Promise.all(SIGNALS.map((s) => safely(s.name, s.run)));
   const active = results.filter((r): r is Decision => r !== null);
-  const chosen = active.length > 0 ? active.reduce((best, d) => (d.priority > best.priority ? d : best)) : null;
+  const chosen = chooseDecision(active);
 
   let horizon: HorizonFact[] = [];
-  if (!chosen || chosen.priority < HIGH_URGENCY_THRESHOLD) {
+  if (shouldShowHorizon(chosen)) {
     const [cal, launch] = await Promise.all([
       safely("calendar-horizon", () => calendarHorizon(now)),
       safely("launch-horizon", () => launchHorizon(now)),
@@ -57,7 +67,10 @@ async function main() {
   );
 }
 
-main().catch((err) => {
-  console.error("[pulse] build failed:", err);
-  process.exitCode = 1;
-});
+// Only run when executed directly (`npm run build`), not when imported for tests.
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((err) => {
+    console.error("[pulse] build failed:", err);
+    process.exitCode = 1;
+  });
+}
